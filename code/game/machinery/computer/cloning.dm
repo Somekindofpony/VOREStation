@@ -1,3 +1,5 @@
+#define SCAN_LEVEL_FOR_AUTOSCAN 6 // Level 6 means 3x advanced or 2x super
+
 /obj/machinery/computer/cloning
 	name = "cloning control console"
 	icon = 'icons/obj/computer.dmi'
@@ -15,6 +17,7 @@
 	var/datum/dna2/record/active_record = null
 	var/obj/item/weapon/disk/data/diskette = null //Mostly so the geneticist can steal everything.
 	var/loading = 0 // Nice loading text
+	var/autoscan = 0 // If auto-scanning is enabled
 
 /obj/machinery/computer/cloning/initialize()
 	..()
@@ -61,6 +64,13 @@
 			P.connected = src
 			P.name = "[initial(P.name)] #[num++]"
 
+
+/obj/machinery/computer/cloning/process()
+	if(autoscan && scanner && scanner.occupant && (scanner.scan_level >= SCAN_LEVEL_FOR_AUTOSCAN))
+		if(scan_mob(scanner.occupant))
+			playsound(src, 'sound/machines/twobeep.ogg', 20, 1)
+	return ..()
+
 /obj/machinery/computer/cloning/attackby(obj/item/W as obj, mob/user as mob)
 	if (istype(W, /obj/item/weapon/disk/data)) //INSERT SOME DISKETTES
 		if (!src.diskette)
@@ -95,7 +105,15 @@
 	updatemodules()
 
 	var/dat = "<h3>Cloning System Control</h3>"
-	dat += "<font size=-1><a href='byond://?src=\ref[src];refresh=1'>Refresh</a></font>"
+	dat += "<font size=-1><a href='byond://?src=\ref[src];refresh=1'>Refresh</a></font><br>"
+
+	if(scanner && (scanner.scan_level >= SCAN_LEVEL_FOR_AUTOSCAN))
+		if(autoscan)
+			dat += "<b>Auto-Scan:</b> <a href='byond://?src=\ref[src];autoscan=off'>Enabled</a>"
+		else
+			dat += "<b>Auto-Scan:</b> <a href='byond://?src=\ref[src];autoscan=on'>Disabled</a>"
+	else
+		dat += "<b>Auto-Scan:</b> <span class='linkOff'>Not Available</span>"
 
 	dat += "<br><tt>[temp]</tt><br>"
 
@@ -339,6 +357,9 @@
 		else
 			temp = "Error: Data corruption."
 
+	else if (href_list["autoscan"])
+		src.autoscan = (href_list["autoscan"] == "on")
+
 	else if (href_list["menu"])
 		src.menu = text2num(href_list["menu"])
 
@@ -404,6 +425,7 @@
 
 	src.records += R
 	scantemp = "Subject successfully scanned."
+	return 1
 
 //Find a specific record by key.
 /obj/machinery/computer/cloning/proc/find_record(var/find_key)
